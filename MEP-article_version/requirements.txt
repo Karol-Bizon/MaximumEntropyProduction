@@ -1,0 +1,9 @@
+numpy==1.23.3
+scipy==1.9.2  # optimize
+matplotlib==3.6.1
+pandas==1.5.0
+mpmath==1.2.1
+pybind11==2.10.1  # for C++
+openpyxl==3.1.2  # for Excel
+cycler==0.11.0  #  for plots
+PyQt5==5.15.9  # allow matplotlib to display figures
