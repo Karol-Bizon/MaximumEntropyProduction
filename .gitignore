@@ -1,0 +1,16 @@
+# --- Wyniki symulacji ---
+results/
+*.npy
+*.xlsx
+*.jpg
+
+# --- Python i środowisko ---
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# --- Ustawienia edytora ---
+.vscode/
+.idea/
+.DS_Store

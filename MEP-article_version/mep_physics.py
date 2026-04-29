@@ -4,9 +4,9 @@ MEP Physics. All functions used by the minimize function are here.
 """
 
 import numpy as np
-# import radiatif as rad  # with the python radiative code
+import radiatif as rad  # with the python radiative code
 # noinspection PyUnresolvedReferences
-from radiatif2 import Rad  # with the C++ radiative code
+# from radiatif2 import Rad  # with the C++ radiative code
 import profile_bis as prf
 import physics as phy
 import constants as cst
@@ -29,8 +29,9 @@ class MepPhysics:
         self.physical_model = self.parameters['physical model']
         self.optimization_variable = self.parameters['optimization variable']
 
-        # self.Rad = rad.Radiation(self.n + 1, useRelativeH=True, useScaling='fixed')  # Syntax in python
-        self.radiaC = Rad(self.n, parameters['index of profile'], cst.p0, parameters['CO2'])  # Syntax in C++
+        self.Rad = rad.Radiation(self.n + 1, useRelativeH=True, useScaling='fixed')  # Syntax in python
+        # self.radiaC = Rad(self.n, parameters['index of profile'], cst.p0, parameters['CO2'])  # Syntax in C++
+        self.radiaC = self.Rad
 
         self.linearisation_radiativeflux = self.parameters['linearisation of radiative flux']
 
@@ -325,10 +326,10 @@ class MepPhysics:
         """
 
         # Syntax in python
-        # self.r, self.r0, b = self.Rad.ddx_bilanR(x)
+        self.r, self.r0, b = self.Rad.ddx_bilanR(x)
         # Syntax in C++
-        b, self.r = self.radiaC.ddx_bilanR(x)
-        self.r0 = b - np.dot(self.r, x)
+        # b, self.r = self.radiaC.ddx_bilanR(x)
+        # self.r0 = b - np.dot(self.r, x)
 
         self.ri = np.linalg.inv(self.r)
 

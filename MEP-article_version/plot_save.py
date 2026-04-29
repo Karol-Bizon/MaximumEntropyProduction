@@ -78,6 +78,10 @@ class PlotSave:
         self.dpi = 600
         self.show_plot = False
 
+        folder = 'results'
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+
     def plot(self) -> None:
         """
         Plotting with the pressure as coordinate, for every physical value.

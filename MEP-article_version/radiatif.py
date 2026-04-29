@@ -827,7 +827,7 @@ class Radiation:
 
 
 #     END     #
-if True:  # compare python and C++ radiative code
+if False:  # compare python and C++ radiative code
     from radiatif2 import Rad
     import time
 
