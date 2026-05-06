@@ -29,7 +29,14 @@ class MepPhysics:
         self.physical_model = self.parameters['physical model']
         self.optimization_variable = self.parameters['optimization variable']
 
-        self.Rad = rad.Radiation(self.n + 1, useRelativeH=True, useScaling='fixed')  # Syntax in python
+        self.Rad = rad.Radiation(
+            self.n + 1,
+            profileIndex=int(self.parameters["index of profile"]),
+            useRelativeH=True,
+            albedo=float(self.parameters["albedo"]),
+            co2ppm=float(self.parameters["CO2"]),
+            useScaling="fixed",
+        )  # Syntax in python
         # self.radiaC = Rad(self.n, parameters['index of profile'], cst.p0, parameters['CO2'])  # Syntax in C++
         self.radiaC = self.Rad
 

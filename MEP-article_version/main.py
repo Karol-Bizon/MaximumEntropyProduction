@@ -72,25 +72,30 @@ parameters = {'index of profile': 1,
               # ['v', 'F_dry', 'F_wet', 'E_dry', 'E_wet', 'T', 'M', 'z', 'A', 'F', 'P', 'theta', 'q', 'h']
 
               "resolution choice":
-                     "simple resolution",
+                    #  "simple resolution",
                      # "simple comparison",
-                     # "advanced comparison",
+                     "advanced comparison",
               }
 
 # Advanced Comparison
 
 # plot of the article
+# list_model_to_compare = [
+#     {'physical model': 'un', 'optimization variable': 'x', 'model name': "ENERGY"
+#      },
+#     {'physical model': 'ini_moist', 'optimization variable': 'x',
+#                  'linearisation of radiative flux': "no linearisation", 'model name': "CONV"
+#      },
+#     {'physical model': 'wc_sa', 'optimization variable': 'xmf', 'initial value': [1, 0.2, 1],
+#                  'positive entropy production': 'Yes', 'maximal mass': 0.33, 'coefficient multiplication': 0.1,
+#                  'model name': "PRECIP"
+#      }
+#                         ]
+
 list_model_to_compare = [
-    {'physical model': 'un', 'optimization variable': 'x', 'model name': "ENERGY"
-     },
-    {'physical model': 'ini_moist', 'optimization variable': 'x',
-                 'linearisation of radiative flux': "no linearisation", 'model name': "CONV"
-     },
-    {'physical model': 'wc_sa', 'optimization variable': 'xmf', 'initial value': [1, 0.2, 1],
-                 'positive entropy production': 'Yes', 'maximal mass': 0.33, 'coefficient multiplication': 0.1,
-                 'model name': "PRECIP"
-     }
-                        ]
+  {"index of profile": 1, "model name": "profile1-tropics"},
+  {"index of profile": 5, "model name": "profile5-subarctic-winter"},
+]
 
 # # plot comparison between two maxima
 # list_model_to_compare = [
