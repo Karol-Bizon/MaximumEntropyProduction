@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-CO2 sensitivity for a simplified tropical climate setup.
+CO2 sensitivity for a simplified Earth-like climate setup.
 
-This script runs a series of historical and hypothetical CO2 scenarios
-for one environmental profile (McClatchey mid-latitude mean, index=6) and compares
-vertical temperature distributions.
+Robust mode:
+- sequential scenario solving,
+- warm start from previous converged case,
+- automatic retry with trust-constr when SLSQP fails.
 """
 
+from copy import deepcopy
+
 from intermediate import Intermediate
+from mep_physics import MepPhysics
 from plot_save import PlotSave
 
 
@@ -17,7 +21,7 @@ parameters = {
     "CO2": 280.0,
     "number of levels": 20,
     "physical model": "wc",
-    "optimization variable": "xmf",  # keep h implicit (=1) for stable convergence
+    "optimization variable": "xmf",
     "entropy variable": "x",
     "feasibility": "resolution",
     "feasibility objective function": "minimal sum",
@@ -51,13 +55,9 @@ parameters = {
     "evolution save option": False,
     "evolution plot option": False,
     "nb iteration for saving and plotting": 1,
-    # Keep a focused set of plots for period comparisons.
     "list value to plot": ["T", "F", "E", "P"],
-    "resolution choice": "advanced comparison",
 }
 
-# Approximate representative values from paleoclimate literature + hypothetical tests.
-# These are intentionally rough scenario markers, not strict reconstructions.
 co2_scenarios_ppm = [
     ("LGM_21ka", 180.0),
     ("Preindustrial_1750", 280.0),
@@ -68,40 +68,87 @@ co2_scenarios_ppm = [
 ]
 
 list_model_to_compare = [
-    {
-        "CO2": co2_ppm,
-        "model name": f"{label}_{int(co2_ppm)}ppm",
-        "optimization variable to initialize": "xmf",
-        "initial value": [1, 0.2, 1],
-        "positive entropy production": "Yes",
-    }
+    {"CO2": co2_ppm, "model name": f"{label}_{int(co2_ppm)}ppm"}
     for label, co2_ppm in co2_scenarios_ppm
 ]
 
-resolution_choice = {
-    "choice": parameters["resolution choice"],
-    "[if simple comparison] parameter that will variate ": "CO2",
-    "[if simple comparison] list of the values the parameter should take": [x[1] for x in co2_scenarios_ppm],
-    "[if advanced comparison] list of the model ": list_model_to_compare,
-}
 
-inter = Intermediate(parameters, resolution_choice)
-results = inter.resolution()
+def run_single_model(base_parameters: dict, model_overrides: dict, warm_start: list | None):
+    base = deepcopy(base_parameters)
+    base.update(model_overrides)
+    base["save option"] = False
+    base["save to excel option"] = False
+    base["plotting the graphics option"] = False
+    base["optimization variable to initialize"] = base["optimization variable"]
+    if warm_start is not None:
+        base["initial value"] = warm_start
+
+    attempts = [
+        ("SLSQP", {"optimization method": "SLSQP"}),
+        (
+            "trust-constr",
+            {
+                "optimization method": "trust-constr",
+                "maxiter of the minimize function": 4000,
+                "max number of iterations": 80,
+            },
+        ),
+    ]
+
+    last_params = None
+    last_result = None
+    used_method = "none"
+    for method_name, method_patch in attempts:
+        params_try = deepcopy(base)
+        params_try.update(method_patch)
+        inter_try = Intermediate(params_try, {"choice": "simple resolution"})
+        result_try = inter_try.resolution()
+        model_name = params_try["model name"]
+        final_try = result_try[model_name]["final"]
+        last_params = params_try
+        last_result = result_try[model_name]
+        used_method = method_name
+        if bool(final_try.get("convergence", False)):
+            break
+
+    return last_params, last_result, used_method
+
+
+results = {}
+used_methods = {}
+final_parameters_list = []
+warm_start_value = None
+
+for model in list_model_to_compare:
+    params_used, result_model, method_name = run_single_model(parameters, model, warm_start_value)
+    model_name = params_used["model name"]
+    results[model_name] = result_model
+    used_methods[model_name] = method_name
+    final_parameters_list.append(params_used)
+
+    if bool(result_model["final"].get("convergence", False)):
+        mep_phy = MepPhysics(params_used)
+        warm_start_value = mep_phy.create_initial_value(result_model["final"], params_used["optimization variable"])
+
+# Optional save and export from merged robust results
+if parameters["save option"]:
+    PlotSave(results, final_parameters_list).save()
+if parameters["save to excel option"]:
+    PlotSave(results, final_parameters_list).save_to_excel()
 
 # Plot anomalies (delta) relative to modern reference, for converged models only.
 reference_model_name = "Modern_2024_420ppm"
-results_plot = inter.shape_results("plot", results, inter.list_parameters)
 list_parameters_plot = []
 results_plot_converged = {}
-for model_parameters in inter.list_parameters:
+for model_parameters in final_parameters_list:
     model_name = model_parameters["model name"]
-    has_result = model_name in results_plot and "final" in results_plot[model_name]
-    is_converged = has_result and bool(results_plot[model_name]["final"].get("convergence", False))
+    has_result = model_name in results and "final" in results[model_name]
+    is_converged = has_result and bool(results[model_name]["final"].get("convergence", False))
     if is_converged:
         model_parameters_plot = dict(model_parameters)
         model_parameters_plot["reference model name for differences"] = reference_model_name
         list_parameters_plot.append(model_parameters_plot)
-        results_plot_converged[model_name] = results_plot[model_name]
+        results_plot_converged[model_name] = results[model_name]
 
 if list_parameters_plot:
     if reference_model_name not in results_plot_converged:
@@ -110,18 +157,18 @@ if list_parameters_plot:
             "Using the first converged model as fallback reference."
         )
         list_parameters_plot[0]["reference model name for differences"] = list_parameters_plot[0]["model name"]
-    ps_diff = PlotSave(results_plot_converged, list_parameters_plot, differences=True)
-    ps_diff.plot()
+    PlotSave(results_plot_converged, list_parameters_plot, differences=True).plot()
 else:
     print("No converged model to plot in anomaly mode.")
 
-print("\n=== CO2 period scenarios summary ===")
+print("\n=== CO2 period scenarios summary (robust mode) ===")
 for model_name, result in results.items():
     final = result["final"]
     t_surface = final["T"][0] if "T" in final else float("nan")
     entropy = final["entropy"] if "entropy" in final else float("nan")
     converged = final.get("convergence", False)
+    method = used_methods.get(model_name, "unknown")
     print(
-        f"{model_name:30s} | converged={str(converged):5s} | "
+        f"{model_name:30s} | converged={str(converged):5s} | method={method:11s} | "
         f"sigma={entropy:.6e} W/m2/K | T_surface={t_surface:.2f} K"
     )
