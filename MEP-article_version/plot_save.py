@@ -73,9 +73,10 @@ class PlotSave:
         self.differences = differences
 
         self.x_min_max = True
-        self.forma = "jpg"
-        self.fontsize = 12
-        self.dpi = 600
+        self.forma = "pdf"
+        self.fontsize = 11
+        self.legend_fontsize = 8
+        self.dpi = 200
         self.show_plot = False
 
         folder = 'results'
@@ -109,9 +110,10 @@ class PlotSave:
         """
         print("value", value_name)
         plt.style.use('tableau-colorblind10')
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(10.5, 7.0))
 
         str_model_name = ''
+        t_diff_values = []
         # Using different lines style and markers when plotting several curves in a fig
         marker = itertools.cycle(("s", "D", ">", "o", "<"))  # ,'+','+','+','o','o','o','o','o',\
         # line = itertools.cycle(["-", "--", "-.", ":"])
@@ -120,7 +122,14 @@ class PlotSave:
 
         # used to plot differences instead of absolute
         if self.differences and len(self.list_parameters) >= 2:  # if plotting differences
-            absoluteValue = self.results[self.list_parameters[1]['model name']]['final'][value_name]
+            reference_model_name = self.list_parameters[0].get("reference model name for differences")
+            if reference_model_name is None:
+                reference_model_name = self.list_parameters[1]['model name']
+            if reference_model_name not in self.results:
+                print(f"Warning: reference model '{reference_model_name}' not found. "
+                      f"Using '{self.list_parameters[1]['model name']}' instead.")
+                reference_model_name = self.list_parameters[1]['model name']
+            absoluteValue = self.results[reference_model_name]['final'][value_name]
 
         for parameters in self.list_parameters:
             mep_phy = MepPhysics(parameters)
@@ -207,6 +216,8 @@ class PlotSave:
                     if self.differences and len(self.list_parameters) >= 2:  # plot the differences
                         # noinspection PyUnboundLocalVariable
                         value_plot = value_plot - absoluteValue
+                        if value_name == "T":
+                            t_diff_values.extend(np.ravel(value_plot).tolist())
                     if value_name in ['E', 'E_dry', 'E_wet']:
                         value_plot = value_plot / 1000  # J/kg -> kJ/kg
                     if value_name in ['M', 'z', 'A', "F", "F_dry", "F_wet"]:
@@ -223,23 +234,25 @@ class PlotSave:
                         ax.plot(value_plot, pressure, linestyle=next(line), label=label,
                                 marker=next(marker), linewidth=1, markersize=next(markerSize))
 
-        # plot extra data
-        if value_name == 'T' and not self.differences:  # plotting absolute values
-            ax.plot(prf.McClatcheyProfileTropical.temperature, prf.McClatcheyProfileTropical.pressure,
-                    marker=next(marker), label='obs (McClatchey 1972)', linestyle="",
-                    markersize=next(markerSize))
-            ax.plot(np.loadtxt("data_IPSL_CM6A_LR/IPSL_CM6A_LR_temp.txt"),
-                    np.loadtxt("data_IPSL_CM6A_LR/IPSL_CM6A_LR_plev.txt") / 100, marker=next(marker),
-                    label='IPSLCM6A_LR', linestyle="", markersize=next(markerSize))
-        if value_name == 'T' and self.differences:  # plotting differences
-            ax.plot(-np.loadtxt("data_IPSL_CM6A_LR/IPSL_CM6A_LR_temp.txt") +
-                    np.loadtxt("data_IPSL_CM6A_LR/IPSL_CM6A_LR_temp_ssp245.txt"),
-                    np.loadtxt("data_IPSL_CM6A_LR/IPSL_CM6A_LR_plev.txt") / 100, marker=next(marker),
-                    label='IPSLCM6A_LR', linestyle="", markersize=next(markerSize))
-        if value_name == "h" and not self.differences:
-            ax.plot(np.loadtxt("data_IPSL_CM6A_LR/IPSL_CM6A_LR_hur.txt") / 100,
-                    np.loadtxt("data_IPSL_CM6A_LR/IPSL_CM6A_LR_plev.txt") / 100, marker=next(marker),
-                    label="IPSLCM6A_LR", linestyle="", markersize=next(markerSize))
+        # plot extra reference data (optional)
+        plot_reference_data = self.list_parameters[0].get("plot reference data option", True)
+        if plot_reference_data:
+            if value_name == 'T' and not self.differences:  # plotting absolute values
+                ax.plot(prf.McClatcheyProfileTropical.temperature, prf.McClatcheyProfileTropical.pressure,
+                        marker=next(marker), label='obs (McClatchey 1972)', linestyle="",
+                        markersize=next(markerSize))
+                ax.plot(np.loadtxt("data_IPSL_CM6A_LR/IPSL_CM6A_LR_temp.txt"),
+                        np.loadtxt("data_IPSL_CM6A_LR/IPSL_CM6A_LR_plev.txt") / 100, marker=next(marker),
+                        label='IPSLCM6A_LR', linestyle="", markersize=next(markerSize))
+            if value_name == 'T' and self.differences:  # plotting differences
+                ax.plot(-np.loadtxt("data_IPSL_CM6A_LR/IPSL_CM6A_LR_temp.txt") +
+                        np.loadtxt("data_IPSL_CM6A_LR/IPSL_CM6A_LR_temp_ssp245.txt"),
+                        np.loadtxt("data_IPSL_CM6A_LR/IPSL_CM6A_LR_plev.txt") / 100, marker=next(marker),
+                        label='IPSLCM6A_LR', linestyle="", markersize=next(markerSize))
+            if value_name == "h" and not self.differences:
+                ax.plot(np.loadtxt("data_IPSL_CM6A_LR/IPSL_CM6A_LR_hur.txt") / 100,
+                        np.loadtxt("data_IPSL_CM6A_LR/IPSL_CM6A_LR_plev.txt") / 100, marker=next(marker),
+                        label="IPSLCM6A_LR", linestyle="", markersize=next(markerSize))
 
         # Plotting the legend
         plt.rcParams.update({'font.family': 'serif'})
@@ -253,15 +266,17 @@ class PlotSave:
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
             ax.yaxis.set_major_locator(MaxNLocator(integer=True))
         else:
-            xlabel = value_parameter_names[value_name]['value name'] + ' $' + value_parameter_names[value_name][
-                'unit'] + '$ '
+            value_label = value_parameter_names[value_name]['value name']
+            if self.differences:
+                value_label = 'Δ' + value_label
+            xlabel = value_label + ' $' + value_parameter_names[value_name]['unit'] + '$ '
             ylabel = 'Pressure $P(mB)$'
             ax.set_ylim([cst.p0, 0])
         ax.set_xlabel(xlabel, fontsize=self.fontsize)
         ax.set_ylabel(ylabel, fontsize=self.fontsize)
         ax.tick_params(labelsize=self.fontsize)
 
-        if self.x_min_max:
+        if self.x_min_max and not self.differences:
             if value_name == 'T':
                 # ax.set_xlim([-5,5])
                 ax.set_xlim([180, 320])
@@ -277,11 +292,27 @@ class PlotSave:
                 # ax.set_xlim([-0.5,100])
                 # ax.set_xlim([-0.5,18])
                 ax.set_xlim([-0.1, 3])
+        if self.differences and value_name == "T" and t_diff_values:
+            vals = np.array(t_diff_values, dtype=float)
+            vmin = np.percentile(vals, 5)
+            vmax = np.percentile(vals, 95)
+            if np.isclose(vmin, vmax):
+                vmax = vmin + 1e-6
+            span = vmax - vmin
+            margin = max(0.25, 0.15 * span)
+            ax.set_xlim([vmin - margin, vmax + margin])
 
         figure_title = value_parameter_names[value_name]['value name']
         ax.set_title(figure_title)
         if not plot_scatter:
-            ax.legend(loc="lower left", borderaxespad=0.9, fontsize=self.fontsize)  # to uncomment
+            ax.legend(
+                loc="lower left",
+                borderaxespad=0.7,
+                fontsize=self.legend_fontsize,
+                framealpha=0.85,
+                handletextpad=0.6,
+                labelspacing=0.4,
+            )
 
         # Saving
         folder = 'results'
