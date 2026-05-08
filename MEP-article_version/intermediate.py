@@ -308,9 +308,24 @@ class Intermediate:
         if self.parameters["save option"]:
             ps.save()
         results_plot = self.shape_results("plot", results, self.list_parameters)
-        ps = PlotSave(results_plot, self.list_parameters)
+
+        # Plot only converged models to avoid showing non-physical failed runs.
+        list_parameters_plot = []
+        results_plot_converged = {}
+        for parameters in self.list_parameters:
+            model_name = parameters["model name"]
+            has_result = model_name in results_plot and "final" in results_plot[model_name]
+            is_converged = has_result and bool(results_plot[model_name]["final"].get("convergence", False))
+            if is_converged:
+                list_parameters_plot.append(parameters)
+                results_plot_converged[model_name] = results_plot[model_name]
+
         if self.parameters['plotting the graphics option']:
-            ps.plot()
+            if list_parameters_plot:
+                ps = PlotSave(results_plot_converged, list_parameters_plot)
+                ps.plot()
+            else:
+                print("No converged model to plot (all models have convergence=False).")
 
         return results
 

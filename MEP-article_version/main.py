@@ -93,8 +93,9 @@ parameters = {'index of profile': 1,
 #                         ]
 
 list_model_to_compare = [
-  {"index of profile": 1, "model name": "profile1-tropics"},
-  {"index of profile": 5, "model name": "profile5-subarctic-winter"},
+  {"index of profile": 1, "albedo": 0.1, "model name": "profile1-tropics"},
+  {"index of profile": 5, "albedo": 0.6, "model name": "profile5-subarctic-winter"},
+  {"index of profile": 2, "albedo": 0.2, "model name": "profile2-midlatitude-summer"},
 ]
 
 # # plot comparison between two maxima
