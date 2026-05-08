@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-CO2 sensitivity for a simplified tropical climate setup.
+Albedo sensitivity for a simplified Earth-like climate setup.
 
-This script runs a series of historical and hypothetical CO2 scenarios
+This script runs a series of period scenarios with fixed CO2 and varying albedo
 for one environmental profile (McClatchey mid-latitude mean, index=6) and compares
 vertical temperature distributions.
 """
@@ -14,7 +14,7 @@ from plot_save import PlotSave
 parameters = {
     "index of profile": 6,  # mid-latitude mean reference atmosphere (better global proxy)
     "albedo": 0.3,
-    "CO2": 280.0,
+    "CO2": 420.0,  # fixed modern reference in this experiment
     "number of levels": 20,
     "physical model": "wc",
     "optimization variable": "xmf",  # keep h implicit (=1) for stable convergence
@@ -51,37 +51,37 @@ parameters = {
     "evolution save option": False,
     "evolution plot option": False,
     "nb iteration for saving and plotting": 1,
-    # Keep a focused set of plots for period comparisons.
     "list value to plot": ["T", "F", "E", "P"],
     "resolution choice": "advanced comparison",
 }
 
-# Approximate representative values from paleoclimate literature + hypothetical tests.
-# These are intentionally rough scenario markers, not strict reconstructions.
-co2_scenarios_ppm = [
-    ("LGM_21ka", 180.0),
-    ("Preindustrial_1750", 280.0),
-    ("Modern_2024", 420.0),
-    ("High_2100_hyp", 810.0),
-    ("PETM_56Ma", 1000.0),
-    ("DeepTime_extreme_hyp", 2000.0),
+# Albedo choices are rough physically-motivated period markers:
+# - Higher albedo for glacial world (more snow/ice), lower for warmer low-ice climates.
+# - Kept moderate to avoid overfitting uncertain paleodata.
+period_albedo = [
+    ("LGM_21ka", 0.34),
+    ("Preindustrial_1750", 0.30),
+    ("Modern_2024", 0.30),
+    ("High_2100_hyp", 0.29),
+    ("PETM_56Ma", 0.27),
+    ("DeepTime_extreme_hyp", 0.26),
 ]
 
 list_model_to_compare = [
     {
-        "CO2": co2_ppm,
-        "model name": f"{label}_{int(co2_ppm)}ppm",
+        "albedo": albedo,
+        "model name": f"{label}_alb{albedo:.2f}",
         "optimization variable to initialize": "xmf",
         "initial value": [1, 0.2, 1],
         "positive entropy production": "Yes",
     }
-    for label, co2_ppm in co2_scenarios_ppm
+    for label, albedo in period_albedo
 ]
 
 resolution_choice = {
     "choice": parameters["resolution choice"],
-    "[if simple comparison] parameter that will variate ": "CO2",
-    "[if simple comparison] list of the values the parameter should take": [x[1] for x in co2_scenarios_ppm],
+    "[if simple comparison] parameter that will variate ": "albedo",
+    "[if simple comparison] list of the values the parameter should take": [x[1] for x in period_albedo],
     "[if advanced comparison] list of the model ": list_model_to_compare,
 }
 
@@ -89,7 +89,7 @@ inter = Intermediate(parameters, resolution_choice)
 results = inter.resolution()
 
 # Plot anomalies (delta) relative to modern reference, for converged models only.
-reference_model_name = "Modern_2024_420ppm"
+reference_model_name = "Modern_2024_alb0.30"
 results_plot = inter.shape_results("plot", results, inter.list_parameters)
 list_parameters_plot = []
 results_plot_converged = {}
@@ -115,7 +115,7 @@ if list_parameters_plot:
 else:
     print("No converged model to plot in anomaly mode.")
 
-print("\n=== CO2 period scenarios summary ===")
+print("\n=== Albedo period scenarios summary (CO2 fixed at 420 ppm) ===")
 for model_name, result in results.items():
     final = result["final"]
     t_surface = final["T"][0] if "T" in final else float("nan")
