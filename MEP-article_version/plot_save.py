@@ -79,9 +79,13 @@ class PlotSave:
         self.dpi = 200
         self.show_plot = False
 
-        folder = 'results'
-        if not os.path.exists(folder):
-            os.makedirs(folder)
+        self.output_folder = "results"
+        if self.list_parameters and "results subfolder" in self.list_parameters[0]:
+            subfolder = str(self.list_parameters[0]["results subfolder"]).strip()
+            if subfolder:
+                self.output_folder = os.path.join(self.output_folder, subfolder)
+        if not os.path.exists(self.output_folder):
+            os.makedirs(self.output_folder)
 
     def plot(self) -> None:
         """
@@ -315,14 +319,15 @@ class PlotSave:
             )
 
         # Saving
-        folder = 'results'
-        if not os.path.exists(folder):
-            os.makedirs(folder)
-        file_title = figure_title + ' - ' + self.list_parameters[0]['file name']
-        if plot_scatter:
-            filename = str(folder + '/./' + file_title + '_scatter' + '.' + self.forma)
+        compact_naming = self.list_parameters[0].get("compact file naming option", False)
+        if compact_naming:
+            file_title = str(value_name) + "_" + str(self.list_parameters[0]["file name"])
         else:
-            filename = str(folder + '/./' + file_title + '.' + self.forma)
+            file_title = figure_title + ' - ' + self.list_parameters[0]['file name']
+        if plot_scatter:
+            filename = str(self.output_folder + '/./' + file_title + '_scatter' + '.' + self.forma)
+        else:
+            filename = str(self.output_folder + '/./' + file_title + '.' + self.forma)
         fig.tight_layout()
         fig.savefig(filename, dpi=self.dpi, format=self.forma)
         plt.show(block=False)
@@ -350,9 +355,8 @@ class PlotSave:
 
                     dict_pd[column_name] = column_figures
 
-        folder = 'results'
         title = 'Results -  ' + self.list_parameters[0]['file name'][:150]
-        complete_file_name = str(folder + '/./' + title + '.xlsx')
+        complete_file_name = str(self.output_folder + '/./' + title + '.xlsx')
         # complete_file_name2 = str(folder + '/./' + title+'.odf')
         df = pd.DataFrame.from_dict(dict_pd, orient="index")
         df = df.transpose()
@@ -370,7 +374,7 @@ class PlotSave:
                     return obj.tolist()
                 return json.JSONEncoder.default(self, obj)
 
-        savePath = "results"
+        savePath = self.output_folder
 
         # save results
         np.save(os.path.join(savePath, "results.npy"), self.results)
